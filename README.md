@@ -15,4 +15,4 @@ The features shown off in the demo are:
 - Utilizing CircleCI's [Test Insights](https://circleci.com/docs/2.0/collect-test-data/) to take a deeper look at jobs
 - Plus many more features!
 
-Currently, the demo deploys a Flask based website utilizing Docker. You can view the live site [here](18.191.154.49).
+Currently, the demo deploys a Flask based website utilizing Docker. You can view the live site [here](http://18.191.154.49).
