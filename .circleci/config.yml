@@ -70,7 +70,7 @@ commands:
       - checkout
       - run:
           name: Build Docker Image
-          command: docker build -t ${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1} -f Dockerfile .
+          command: docker build --build-arg VERSION=${VERSION} --build-arg CIRCLE_BUILD_URL=${CIRCLE_BUILD_URL} --build-arg CIRCLE_SHA1=${CIRCLE_SHA1} --build-arg CIRCLE_USERNAME=${CIRCLE_USERNAME} --build-arg CIRCLE_BUILD_NUM=${CIRCLE_BUILD_NUM} -t ${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1} -f Dockerfile .
 
   tagging:
     description: "Add tags to a Docker Image"
@@ -281,23 +281,24 @@ workflows:
           name: "Testing Docker Image"
           requires:
             - "Building Docker Image"
-            - "Testing Python Demo Code"
       - scan-image:
           name: "Scan image via Snyk"
           requires:
             - "Building Docker Image"
-            - "Testing Python Demo Code"
-      - hold:
-          name: "Approval Needed for Deployment"
-          type: approval
-          requires:
-            - "Testing Docker Image"
-            - "Scan image via Snyk"
       - tag-and-publish:
           name: "Tag and Publish Docker Images"
           requires:
             - "Testing Docker Image"
             - "Scan image via Snyk"
+            - "Testing Python Demo Code"
+          filters:
+            branches:
+              only: testing
+      - hold:
+          name: "Approval Needed for Deployment"
+          type: approval
+          requires:
+            - "Tag and Publish Docker Images"
           filters:
             branches:
               only: testing
@@ -306,3 +307,6 @@ workflows:
           requires:
             - "Tag and Publish Docker Images"
             - "Approval Needed for Deployment"
+          filters:
+            branches:
+              only: testing
