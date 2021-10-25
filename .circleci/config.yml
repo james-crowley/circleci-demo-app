@@ -293,7 +293,7 @@ workflows:
             - "Testing Python Demo Code"
           filters:
             branches:
-              only: testing
+              only: main
       - hold:
           name: "Approval Needed for Deployment"
           type: approval
@@ -301,7 +301,7 @@ workflows:
             - "Tag and Publish Docker Images"
           filters:
             branches:
-              only: testing
+              only: main
       - deploy-via-ip-ranges:
           name: "Deploy Application via IP Ranges"
           requires:
@@ -309,4 +309,4 @@ workflows:
             - "Approval Needed for Deployment"
           filters:
             branches:
-              only: testing
+              only: main
