@@ -274,6 +274,7 @@ workflows:
     jobs:
       - test-demo:
           name: "Testing Python Demo Code"
+          context: SonarCloud
       - build-image:
           name: "Building Docker Image"
       - test-image:
