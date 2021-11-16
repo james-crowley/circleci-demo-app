@@ -260,7 +260,7 @@ jobs:
       - pull-image
       - deploy-application
     environment:
-      DOCKER_IMAGE: mind-the-gap-demo
+      DOCKER_IMAGE: circleci-demo-app
       REMOTE_IP: 172.31.36.246
       REMOTE_USER: ubuntu
 
