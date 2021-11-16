@@ -251,21 +251,17 @@ jobs:
     environment:
       DOCKER_IMAGE: circleci-demo-app
 
-  deploy-via-ip-ranges:
-    circleci_ip_ranges: true
-    docker:
-      - image: cimg/base:2021.10
+  deploy-via-runner:
+    machine: true
+    resource_class: crowley-namespace/mind-the-gap
     steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "dd:8f:af:18:32:a1:c9:b7:86:ca:73:a1:1e:77:db:87"
       - stop-running-containers
       - remove-all-images
       - pull-image
       - deploy-application
     environment:
-      DOCKER_IMAGE: circleci-demo-app
-      REMOTE_IP: 18.191.154.49
+      DOCKER_IMAGE: mind-the-gap-demo
+      REMOTE_IP: 172.31.36.246
       REMOTE_USER: ubuntu
 
 
@@ -293,7 +289,7 @@ workflows:
             - "Testing Python Demo Code"
           filters:
             branches:
-              only: main
+              only: deploy_via_runner
       - hold:
           name: "Approval Needed for Deployment"
           type: approval
@@ -301,12 +297,12 @@ workflows:
             - "Tag and Publish Docker Images"
           filters:
             branches:
-              only: main
-      - deploy-via-ip-ranges:
-          name: "Deploy Application via IP Ranges"
+              only: deploy_via_runner
+      - deploy-via-runner:
+          name: "Deploy Application via Runner"
           requires:
             - "Tag and Publish Docker Images"
             - "Approval Needed for Deployment"
           filters:
             branches:
-              only: main
+              only: deploy_via_runner
