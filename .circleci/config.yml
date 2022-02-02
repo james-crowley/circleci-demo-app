@@ -9,9 +9,9 @@ workflows:
   setup-workflow:
     jobs:
       - path-filtering/filter:
-          base-revision: maing
+          base-revision: main
           config-path: .circleci/continue-config.yml
           mapping: |
             demo/.* project-one true
             mobile-apps/androidApp/.* project-two true
-            mobile-apps/iosApp/.* project-three true
+            mobile-apps/iosApp/.* project-three trueg
