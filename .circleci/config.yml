@@ -5,8 +5,6 @@ orbs:
   sonarcloud: sonarsource/sonarcloud@1.0.1
   snyk: snyk/snyk@1.1.1
   path-filtering: circleci/path-filtering@0.1.1
-  android: circleci/android@1.0
-
 
 commands:
   set-build-env:
@@ -270,98 +268,33 @@ jobs:
       REMOTE_IP: 18.191.154.49
       REMOTE_USER: ubuntu
 
-  build_kotlin:
-    docker:
-      - image: cimg/android:2021.10.2
-    steps:
-    - checkout
-    - restore_cache:
-          key: jars-{{ checksum "build.gradle.kts" }}-{{ checksum  "androidApp/build.gradle.kts" }}
-    - run:
-        name: Download Dependencies
-        command: |
-          cd ./mobile-app/
-          gradlew androidDependencies
-    - save_cache:
-        paths:
-          - ~/.gradle
-        key: jars-{{ checksum "build.gradle.kts" }}-{{ checksum  "androidApp/build.gradle.kts" }}
-    - run:
-        name: Build project
-        command: |
-          cd ./mobile-app/
-          gradlew build
-    - persist_to_workspace:
-        root: .
-        # Must be relative path from root
-        paths:
-          - mobile-app/build/*
-          - mobile-app/shared/build/*
-          - mobile-app/androidApp/build/*
-
-  lint_kotlin:
-    docker:
-      - image: cimg/android:2021.10.2
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - checkout
-      - restore_cache:
-            key: jars-{{ checksum "build.gradle.kts" }}-{{ checksum  "androidApp/build.gradle.kts" }}
-      - run:
-          name: Run Linter
-          command: |
-            cd ./mobile-app/
-            gradlew lint
-      - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
-          path: mobile-app/androidApp/build/reports/
-          destination: mobile-app/androidApp-reports
-      - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
-          path: mobile-app/shared/build/reports/
-          destination: mobile-app/shared-reports
-      - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-          path: mobile-app/androidApp/build/test-results
-      - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-          path: mobile-app/shared/build/test-results
-
-  test_kotlin:
-    docker:
-      - image: cimg/android:2021.10.2
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - checkout
-      - restore_cache:
-            key: jars-{{ checksum "build.gradle.kts" }}-{{ checksum  "androidApp/build.gradle.kts" }}
-      - run:
-          name: Run Tests
-          command: |
-            cd ./mobile-app/
-            gradlew test
-      - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
-          path: mobile-app/androidApp/build/reports/
-          destination: mobile-app/androidApp-reports
-      - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
-          path: mobile-app/shared/build/reports/
-          destination: mobile-app/shared-reports
-      - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-          path: mobile-app/androidApp/build/test-results
-      - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-          path: mobile-app/shared/build/test-results
-
-  test_ios:
-    macos:
-      xcode: 13.1.0 # indicate our selected version of Xcode
-    resource_class: large
+  build_android_app:
+    executor: docker-builder
     steps:
       - checkout
-      - run:
-          name: Run Unit Tests
-          command: |
-            cd ./mobile-app/iosApp
-            xcodebuild test -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 13 Pro,OS=15.0' | xcpretty --report junit
-      - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-          path: mobile-app/iosApp/build/reports
+      - run: |
+          cd ./mobile-apps/androidApp
+          docker build -t android:app -f Dockerfile .
+
+  build_ios_app:
+    executor: docker-builder
+    steps:
+      - checkout
+      - run: |
+          cd ./mobile-apps/iosApp
+          docker build -t ios:app -f Dockerfile .
+
+  test_android_app:
+    docker:
+      - image: cimg/python:3.7 # the primary container, where your job's commands are run
+    steps:
+      - run: echo "Testing android app"
+
+  test_ios_app:
+    docker:
+      - image: cimg/python:3.6 # the primary container, where your job's commands are run
+    steps:
+      - run: echo "Testing ios app"
 
   deploy_android_app:
     docker:
@@ -418,40 +351,29 @@ workflows:
             branches:
               only: main
 
-      - build_kotlin:
-          name: "Build Kotlin"
-      - lint_kotlin:
-          name: "Lint Kotlin"
+
+      - build_android_app:
+          name: "Build Android App"
+
+      - build_ios_app:
+          name: "Build iOS App"
+
+      - test_android_app:
+          name: "Test Android App"
           requires:
-            - "Build Kotlin"
-      - test_kotlin:
-          name: "Test Kotlin"
+            - "Build Android App"
+
+      - test_ios_app:
+          name: "Test iOS App"
           requires:
-            - "Build Kotlin"
-      - android/run-ui-tests:
-          matrix:
-            parameters:
-              system-image:
-                - system-images;android-30;default;x86_64
-          name: "Test Android UI: <<matrix.system-image>>"
-          requires:
-            - "Test Kotlin"
-      - test_ios:
-          name: "Test iOS UI"
-          requires:
-            - "Test Kotlin"
-      - hold_for_deploy:
-          name: "Deployment Approval?"
-          type: approval
-          requires:
-            - "Lint Kotlin"
-            - "Test iOS UI"
-            - android/run-ui-tests
+            - "Build iOS App"
+
       - deploy_android_app:
           name: "Deploy Android App"
           requires:
-            - "Deployment Approval?"
+            - "Test Android App"
+
       - deploy_ios_app:
           name: "Deploy iOS App"
           requires:
-            - "Deployment Approval?"
+            - "Test iOS App"
