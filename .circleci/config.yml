@@ -3,15 +3,15 @@ version: 2.1
 setup: true
 
 orbs:
-  path-filtering: circleci/path-filtering@0.1.1
+  path-filtering: circleci/path-filtering@0.0.2
 
 workflows:
   setup-workflow:
     jobs:
       - path-filtering/filter:
-          base-revision: main
+          base-revision: monorepo
           config-path: .circleci/continue-config.yml
           mapping: |
             demo/.* project-one true
             mobile-apps/androidApp/.* project-two true
-            mobile-apps/iosApp/.* project-three trueg
+            mobile-apps/iosApp/.* project-three true
