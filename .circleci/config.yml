@@ -279,14 +279,18 @@ jobs:
           key: jars-{{ checksum "build.gradle.kts" }}-{{ checksum  "androidApp/build.gradle.kts" }}
     - run:
         name: Download Dependencies
-        command: ./mobile-app/gradlew androidDependencies
+        command: |
+          cd ./mobile-app/
+          gradlew androidDependencies
     - save_cache:
         paths:
           - ~/.gradle
         key: jars-{{ checksum "build.gradle.kts" }}-{{ checksum  "androidApp/build.gradle.kts" }}
     - run:
         name: Build project
-        command: ./mobile-app/gradlew build
+        command: |
+          cd ./mobile-app/
+          gradlew build
     - persist_to_workspace:
         root: .
         # Must be relative path from root
@@ -306,7 +310,9 @@ jobs:
             key: jars-{{ checksum "build.gradle.kts" }}-{{ checksum  "androidApp/build.gradle.kts" }}
       - run:
           name: Run Linter
-          command: ./mobile-app/gradlew lint
+          command: |
+            cd ./mobile-app/
+            gradlew lint
       - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
           path: mobile-app/androidApp/build/reports/
           destination: mobile-app/androidApp-reports
@@ -329,7 +335,9 @@ jobs:
             key: jars-{{ checksum "build.gradle.kts" }}-{{ checksum  "androidApp/build.gradle.kts" }}
       - run:
           name: Run Tests
-          command: ./mobile-app/gradlew test
+          command: |
+            cd ./mobile-app/
+            gradlew test
       - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
           path: mobile-app/androidApp/build/reports/
           destination: mobile-app/androidApp-reports
