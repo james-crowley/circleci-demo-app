@@ -268,10 +268,30 @@ jobs:
       REMOTE_IP: 18.191.154.49
       REMOTE_USER: ubuntu
 
+  testing-pipeline-vars:
+    executor: amd64
+    steps:
+      - run: |
+          printenv
+    environment:
+      PIPELINE_ID: << pipeline.id >>
+      PIPELINE_NUMBER: << pipeline.number >>
+      PIPELINE_GIT_URL: << pipeline.project.git_url	>>
+      PIPELINE_TYPE: << pipeline.project.git_url >>
+      PIPELINE_TAG: << pipeline.git.tag	>>
+      PIPELINE_BRANCH: << pipeline.git.branch	>>
+      PIPELINE_REVISION: << pipeline.git.revision	>>
+      PIPELINE_BASE_REVISION: << pipeline.git.base_revision	>>
+      PIPELINE_IN_SETUP: << pipeline.in_setup	>>
+      PIPELINE_TRIGGER: << pipeline.trigger_source >>
+      PIPELINE_SCHEDULE: << pipeline.schedule.name	>>
+      PIPELINE_SCHEDULE_ID: << pipeline.schedule.id	>>
+
 
 workflows:
   demo:
     jobs:
+      - testing-pipeline-vars
       - test-demo:
           name: "Testing Python Demo Code"
           context: SonarCloud
