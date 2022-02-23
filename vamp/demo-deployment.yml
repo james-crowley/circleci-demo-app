@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${DOCKER_IMAGE}-v${VERSION}
+  namespace: production
+  labels:
+    app: ${DOCKER_IMAGE}
+    version: "${VERSION}"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ${DOCKER_IMAGE}
+      version: "${VERSION}"
+  template:
+    metadata:
+      labels:
+        app: ${DOCKER_IMAGE}
+        version: "${VERSION}"
+    spec:
+      containers:
+      - name: ${DOCKER_IMAGE}
+        imagePullPolicy: Always
+        image: "jimcrowley/${DOCKER_IMAGE}:${VERSION}"
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /build
+            port: http
+            scheme: HTTP
+          failureThreshold: 1
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 128Mi
