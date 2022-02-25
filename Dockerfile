@@ -24,6 +24,9 @@ ENV CIRCLE_BUILD_NUM=${CIRCLE_BUILD_NUM}
 # Expose the server port
 EXPOSE ${PORT}
 
+# Update and Upgrade Packages for Alpine
+RUN apk -U upgrade
+
 # Copy in requirements file for demo
 COPY ./demo /demo
 
