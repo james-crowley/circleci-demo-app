@@ -176,7 +176,7 @@ jobs:
   scan-demo:
     executor: browsers-python
     steps:
-      - run-pytest:
+      - sonarcloud-scan:
           requirements-path: "./demo/requirements/testing.txt"
 
   build-image:
