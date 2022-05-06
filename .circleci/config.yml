@@ -15,6 +15,7 @@ commands:
           name: Setup Build Environment Variables
           command: |
             echo "export VERSION=$(cat VERSION)" >> $BASH_ENV
+            echo "export PATH=$PATH:$(pwd)/venv/bin" >> $BASH_ENV 
             source $BASH_ENV
   
   save-docker-image:
@@ -110,7 +111,6 @@ commands:
             python3 -m venv venv
             . venv/bin/activate            
             pip3 install -r << parameters.requirements-path >>
-            export PATH=$PATH:$(pwd)/venv/bin
       - save_cache:
           key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
           paths:
@@ -148,7 +148,6 @@ commands:
           command: |
             set -e
             TEST_FILES=$(circleci tests glob "demo/tests/*test*.py" | circleci tests split --split-by=timings)
-            export PATH=$PATH:$(pwd)/venv/bin
             pytest << parameters.pytest-args >> $TEST_FILES
       - store_test_results:
           path: test-results
@@ -169,9 +168,10 @@ executors:
 
 jobs:
   test-demo:
-    parallelism: 3
+    parallelism: 2
     executor: browsers-python
     steps:
+      - set-build-env
       - run-pytest:
           requirements-path: "./demo/requirements/testing.txt"
           pytest-args: "--live-server-port 8080 --verbose --junitxml=test-results/junit.xml"
@@ -179,6 +179,7 @@ jobs:
   scan-demo:
     executor: browsers-python
     steps:
+      - set-build-env
       - sonarcloud-scan:
           requirements-path: "./demo/requirements/production.txt"
 
