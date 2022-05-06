@@ -95,6 +95,27 @@ commands:
             docker push ${DOCKERHUB_USERNAME}/${DOCKER_IMAGE}:${VERSION}
             docker push ${DOCKERHUB_USERNAME}/${DOCKER_IMAGE}:latest
 
+  sonarcloud-scan:
+    description: "Run Sonar Cloud Scan"
+    parameters:
+      requirements-path:
+        type: string
+    steps:
+      - checkout
+      - restore_cache: 
+          key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
+      - run:
+          name: Pip Install Testing Requirements
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate            
+            pip install -r << parameters.requirements-path >>
+      - save_cache:
+          key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
+          paths:
+            - "venv"
+      - sonarcloud/scan
+
   run-pytest:
     description: "Run PyTest"
     parameters:
@@ -105,9 +126,18 @@ commands:
         default: "--verbose"
     steps:
       - checkout
+      - restore_cache: 
+          key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
       - run:
           name: Pip Install Testing Requirements
-          command: pip install -r << parameters.requirements-path >>
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate            
+            pip install -r << parameters.requirements-path >>
+      - save_cache:
+          key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
+          paths:
+            - "venv"
       - sonarcloud/scan
       - run:
           name: Make Directory for Test Results
@@ -137,12 +167,18 @@ executors:
 
 jobs:
   test-demo:
-    parallelism: 5
+    parallelism: 3
     executor: browsers-python
     steps:
       - run-pytest:
           requirements-path: "./demo/requirements/testing.txt"
           pytest-args: "--live-server-port 8080 --verbose --junitxml=test-results/junit.xml"
+
+  scan-demo:
+    executor: browsers-python
+    steps:
+      - run-pytest:
+          requirements-path: "./demo/requirements/testing.txt"
 
   build-image:
     executor: docker-builder
@@ -188,6 +224,8 @@ workflows:
     jobs:
       - test-demo:
           name: "Testing Python Demo Code"
+      - scan-demo:
+          name: "Scan Python Demo Code"
           context: SonarCloud
       - build-image:
           name: "Building Docker Image"
@@ -205,6 +243,7 @@ workflows:
             - "Testing Docker Image"
             - "Scan image via Snyk"
             - "Testing Python Demo Code"
+            - "Scan Python Demo Code"
           filters:
             branches:
               only: optimized
