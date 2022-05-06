@@ -138,7 +138,6 @@ commands:
           key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
           paths:
             - "venv"
-      - sonarcloud/scan
       - run:
           name: Make Directory for Test Results
           command: mkdir test-results
