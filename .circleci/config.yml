@@ -17,27 +17,6 @@ commands:
             echo "export VERSION=$(cat VERSION)" >> $BASH_ENV
             source $BASH_ENV
   
-  save-docker-image:
-    description: "Saves a Docker image for future Jobs"
-    steps:
-      - run: mkdir -p /tmp/docker-images/
-      - run:
-          name: Saving Docker Image
-          command: docker save --output /tmp/docker-images/${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1}.tar ${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1}
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - docker-images/*
-
-  load-docker-image:
-    description: "Loads a Docker image"
-    steps:
-      - attach_workspace:
-          at: /tmp
-      - run:
-            name: Loading Docker Image
-            command: docker load --input /tmp/docker-images/${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1}.tar
-
   testing-docker-image:
     description: "Launches tests against a Docker image"
     steps:
@@ -120,85 +99,12 @@ commands:
       - store_artifacts:
           path: test-results
 
-  stop-running-containers:
-    description: "Stop Running Containers on Remote Host"
-    parameters:
-      remote-ip:
-        type: env_var_name
-        default: REMOTE_IP
-      remote-user:
-        type: env_var_name
-        default: REMOTE_USER
-    steps:
-      - run:
-          name: "SSH into host and Stop all Images"
-          command: |
-             ssh -o StrictHostKeyChecking=no ${<< parameters.remote-user >>}@${<< parameters.remote-ip >>} "docker rm -f \$(docker ps -a -q)" || echo "No Running Containers"
-
-  remove-all-images:
-    description: "Remove all images on Remote Host"
-    parameters:
-      remote-ip:
-        type: env_var_name
-        default: REMOTE_IP
-      remote-user:
-        type: env_var_name
-        default: REMOTE_USER
-    steps:
-      - run:
-          name: "SSH into host and Remove all Images"
-          command: |
-             ssh -o StrictHostKeyChecking=no ${<< parameters.remote-user >>}@${<< parameters.remote-ip >>} "docker rmi -f \$(docker images -q)" || echo "No Images to Remove"
-              
-  pull-image:
-    description: "Pull Image on Remote Host"
-    parameters:
-      remote-ip:
-        type: env_var_name
-        default: REMOTE_IP
-      remote-user:
-        type: env_var_name
-        default: REMOTE_USER
-      image-tag:
-        type: string
-        default: "latest"
-    steps:
-      - run:
-          name: "SSH into host and Pull down an Image"
-          command: |
-             ssh -o StrictHostKeyChecking=no ${<< parameters.remote-user >>}@${<< parameters.remote-ip >>} "docker pull ${DOCKERHUB_USERNAME}/${DOCKER_IMAGE}:<< parameters.image-tag >>"
-
-  deploy-application:
-    description: "Deploy Application on Remote Host"
-    parameters:
-      remote-ip:
-        type: env_var_name
-        default: REMOTE_IP
-      remote-user:
-        type: env_var_name
-        default: REMOTE_USER
-      image-tag:
-        type: string
-        default: "latest"
-    steps:
-      - run:
-          name: "SSH into host and Deploy Application"
-          command: |
-             ssh -o StrictHostKeyChecking=no ${<< parameters.remote-user >>}@${<< parameters.remote-ip >>} "docker run -d -p 80:8080 ${DOCKERHUB_USERNAME}/${DOCKER_IMAGE}:<< parameters.image-tag >>"
-
-
 executors:
   browsers-python:
     docker:
       - image: circleci/python:3.9-browsers
 
   docker-builder:
-    machine:
-      image: ubuntu-2004:202010-01
-      docker_layer_caching: true
-    resource_class: medium
-
-  amd64:
     machine:
       image: ubuntu-2004:202010-01
     resource_class: medium
@@ -212,62 +118,35 @@ jobs:
           requirements-path: "./demo/requirements/testing.txt"
           pytest-args: "--live-server-port 8080 --verbose --junitxml=test-results/junit.xml"
 
-  build-image:
+  test-image:
     executor: docker-builder
     steps:
       - set-build-env
       - build
-      - save-docker-image
-    environment:
-      DOCKER_IMAGE: circleci-demo-app
-
-  test-image:
-    executor: amd64
-    steps:
-      - set-build-env
-      - load-docker-image
       - testing-docker-image
     environment:
       DOCKER_IMAGE: circleci-demo-app
       GOSS_SLEEP: 10
 
   scan-image:
-    executor: amd64
+    executor: docker-builder
     steps:
       - set-build-env
-      - load-docker-image
+      - build
       - snyk/scan:
           docker-image-name: ${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1}
     environment:
       DOCKER_IMAGE: circleci-demo-app
 
   tag-and-publish:
-    executor: amd64
+    executor: docker-builder
     steps:
       - set-build-env
-      - load-docker-image
+      - build
       - tagging
       - publish
     environment:
       DOCKER_IMAGE: circleci-demo-app
-
-  deploy-via-ip-ranges:
-    circleci_ip_ranges: true
-    docker:
-      - image: cimg/base:2021.10
-    steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "dd:8f:af:18:32:a1:c9:b7:86:ca:73:a1:1e:77:db:87"
-      - stop-running-containers
-      - remove-all-images
-      - pull-image
-      - deploy-application
-    environment:
-      DOCKER_IMAGE: circleci-demo-app
-      REMOTE_IP: 18.191.154.49
-      REMOTE_USER: ubuntu
-
 
 workflows:
   demo:
@@ -275,16 +154,10 @@ workflows:
       - test-demo:
           name: "Testing Python Demo Code"
           context: SonarCloud
-      - build-image:
-          name: "Building Docker Image"
       - test-image:
           name: "Testing Docker Image"
-          requires:
-            - "Building Docker Image"
       - scan-image:
           name: "Scan image via Snyk"
-          requires:
-            - "Building Docker Image"
       - tag-and-publish:
           name: "Tag and Publish Docker Images"
           requires:
@@ -293,20 +166,4 @@ workflows:
             - "Testing Python Demo Code"
           filters:
             branches:
-              only: main
-      - hold:
-          name: "Approval Needed for Deployment"
-          type: approval
-          requires:
-            - "Tag and Publish Docker Images"
-          filters:
-            branches:
-              only: main
-      - deploy-via-ip-ranges:
-          name: "Deploy Application via IP Ranges"
-          requires:
-            - "Tag and Publish Docker Images"
-            - "Approval Needed for Deployment"
-          filters:
-            branches:
-              only: main
+              only: unoptimized
