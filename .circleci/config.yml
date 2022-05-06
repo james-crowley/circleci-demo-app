@@ -105,11 +105,12 @@ commands:
       - restore_cache: 
           key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
       - run:
-          name: Pip Install Testing Requirements
+          name: Pip Install Production Requirements
           command: |
             python3 -m venv venv
             . venv/bin/activate            
-            pip install -r << parameters.requirements-path >>
+            pip3 install -r << parameters.requirements-path >>
+            export PATH=$PATH:$(pwd)/venv/bin
       - save_cache:
           key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
           paths:
@@ -133,7 +134,8 @@ commands:
           command: |
             python3 -m venv venv
             . venv/bin/activate            
-            pip install -r << parameters.requirements-path >>
+            pip3 install -r << parameters.requirements-path >>
+            export PATH=$PATH:$(pwd)/venv/bin
       - save_cache:
           key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
           paths:
@@ -177,7 +179,7 @@ jobs:
     executor: browsers-python
     steps:
       - sonarcloud-scan:
-          requirements-path: "./demo/requirements/testing.txt"
+          requirements-path: "./demo/requirements/production.txt"
 
   build-image:
     executor: docker-builder
