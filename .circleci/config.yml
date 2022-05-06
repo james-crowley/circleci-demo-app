@@ -17,6 +17,27 @@ commands:
             echo "export VERSION=$(cat VERSION)" >> $BASH_ENV
             source $BASH_ENV
   
+  save-docker-image:
+    description: "Saves a Docker image for future Jobs"
+    steps:
+      - run: mkdir -p /tmp/docker-images/
+      - run:
+          name: Saving Docker Image
+          command: docker save --output /tmp/docker-images/${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1}.tar ${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1}
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - docker-images/*
+
+  load-docker-image:
+    description: "Loads a Docker image"
+    steps:
+      - attach_workspace:
+          at: /tmp
+      - run:
+            name: Loading Docker Image
+            command: docker load --input /tmp/docker-images/${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1}.tar
+  
   testing-docker-image:
     description: "Launches tests against a Docker image"
     steps:
@@ -93,7 +114,10 @@ commands:
           command: mkdir test-results
       - run:
           name: Run PyTest Test Suite
-          command: pytest << parameters.pytest-args >>
+          command: |
+            set -e
+            TEST_FILES=$(circleci tests glob "demo/tests/*test*.py" | circleci tests split --split-by=timings)
+            pytest << parameters.pytest-args >> $TEST_FILES
       - store_test_results:
           path: test-results
       - store_artifacts:
@@ -107,22 +131,33 @@ executors:
   docker-builder:
     machine:
       image: ubuntu-2004:202010-01
+      docker_layer_caching: true
     resource_class: medium
 
 
 jobs:
   test-demo:
+    parallelism: 5
     executor: browsers-python
     steps:
       - run-pytest:
           requirements-path: "./demo/requirements/testing.txt"
           pytest-args: "--live-server-port 8080 --verbose --junitxml=test-results/junit.xml"
 
-  test-image:
+  build-image:
     executor: docker-builder
     steps:
       - set-build-env
       - build
+      - save-docker-image
+    environment:
+      DOCKER_IMAGE: circleci-demo-app
+
+  test-image:
+    executor: docker-builder
+    steps:
+      - set-build-env
+      - load-docker-image
       - testing-docker-image
     environment:
       DOCKER_IMAGE: circleci-demo-app
@@ -132,7 +167,7 @@ jobs:
     executor: docker-builder
     steps:
       - set-build-env
-      - build
+      - load-docker-image
       - snyk/scan:
           docker-image-name: ${DOCKER_IMAGE}:${VERSION}-${CIRCLE_SHA1}
     environment:
@@ -142,7 +177,7 @@ jobs:
     executor: docker-builder
     steps:
       - set-build-env
-      - build
+      - load-docker-image
       - tagging
       - publish
     environment:
@@ -154,18 +189,22 @@ workflows:
       - test-demo:
           name: "Testing Python Demo Code"
           context: SonarCloud
+      - build-image:
+          name: "Building Docker Image"
       - test-image:
           name: "Testing Docker Image"
           requires:
-            - "Testing Python Demo Code"
+            - "Building Docker Image"
       - scan-image:
           name: "Scan image via Snyk"
           requires:
-            - "Testing Docker Image"
+            - "Building Docker Image"
       - tag-and-publish:
           name: "Tag and Publish Docker Images"
           requires:
+            - "Testing Docker Image"
             - "Scan image via Snyk"
+            - "Testing Python Demo Code"
           filters:
             branches:
-              only: unoptimized
+              only: optimized
