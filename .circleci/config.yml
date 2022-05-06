@@ -156,14 +156,16 @@ workflows:
           context: SonarCloud
       - test-image:
           name: "Testing Docker Image"
+          requires:
+            - "Testing Python Demo Code"
       - scan-image:
           name: "Scan image via Snyk"
+          requires:
+            - "Testing Docker Image"
       - tag-and-publish:
           name: "Tag and Publish Docker Images"
           requires:
-            - "Testing Docker Image"
             - "Scan image via Snyk"
-            - "Testing Python Demo Code"
           filters:
             branches:
               only: unoptimized
