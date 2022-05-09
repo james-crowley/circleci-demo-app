@@ -4,8 +4,8 @@ import time
 class TestMathSub:
     # Math Operations for Testing Spliting
     @staticmethod
-    def sum(a, b):
-        return a + b
+    def sub(a, b):
+        return a - b
 
     # Sub Function Testing
     def test_sub_1_and_1(self):
