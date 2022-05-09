@@ -148,7 +148,7 @@ commands:
           command: |
             set -e
             TEST_FILES=$(circleci tests glob "demo/tests/*test*.py" | circleci tests split --split-by=timings)
-            pytest << parameters.pytest-args >> $TEST_FILES
+            pytest << parameters.pytest-args >> $TEST_FILES ; err=$? ; if (( $err != 5 )) ; then exit $err ; fi
       - store_test_results:
           path: test-results
       - store_artifacts:
@@ -168,7 +168,7 @@ executors:
 
 jobs:
   test-demo:
-    parallelism: 4
+    parallelism: 2
     executor: browsers-python
     steps:
       - set-build-env
