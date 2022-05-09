@@ -157,7 +157,7 @@ commands:
 executors:
   browsers-python:
     docker:
-      - image: circleci/python:3.9-browsers
+      - image: cimg/python:3.9-browsers
 
   docker-builder:
     machine:
