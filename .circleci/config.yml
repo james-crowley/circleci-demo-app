@@ -135,7 +135,6 @@ commands:
             python3 -m venv venv
             . venv/bin/activate            
             pip3 install -r << parameters.requirements-path >>
-            export PATH=$PATH:$(pwd)/venv/bin
       - save_cache:
           key: deps1-{{ .Branch }}-{{ checksum "<< parameters.requirements-path >>" }}
           paths:
@@ -157,7 +156,7 @@ commands:
 executors:
   browsers-python:
     docker:
-      - image: cimg/python:3.9-browsers
+      - image: circleci/python:3.9-browsers
 
   docker-builder:
     machine:
