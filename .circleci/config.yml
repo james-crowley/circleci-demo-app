@@ -168,7 +168,7 @@ executors:
 
 jobs:
   test-demo:
-    parallelism: 1
+    parallelism: 4
     executor: browsers-python
     steps:
       - set-build-env
