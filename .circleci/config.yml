@@ -15,7 +15,7 @@ commands:
           name: Setup Build Environment Variables
           command: |
             echo "export VERSION=$(cat VERSION)" >> $BASH_ENV
-            echo "export PATH=$PATH:$(pwd)/venv/bin" >> $BASH_ENV 
+            echo 'export PATH=$(pwd)/venv/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
   
   save-docker-image:
