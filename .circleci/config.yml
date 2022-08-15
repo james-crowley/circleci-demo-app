@@ -265,7 +265,7 @@ jobs:
       - deploy-application
     environment:
       DOCKER_IMAGE: circleci-demo-app
-      REMOTE_IP: 18.191.154.49
+      REMOTE_IP: 18.221.14.33
       REMOTE_USER: ubuntu
 
 
