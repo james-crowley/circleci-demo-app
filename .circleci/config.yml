@@ -215,7 +215,10 @@ jobs:
   build-image:
     executor: docker-builder
     steps:
-      - set-build-env
+      - run:
+          name: "Echo Version"
+          command: |
+             echo "VERSION: ${VERSION}"
       - build
       - save-docker-image
     environment:
@@ -272,41 +275,13 @@ jobs:
 workflows:
   demo:
     jobs:
-      - test-demo:
-          name: "Testing Python Demo Code"
-          context: SonarCloud
       - build-image:
+          pre-steps:
+            - checkout
+            - run:
+                name: Setup Build Environment Variables
+                command: |
+                  echo "export VERSION=$(cat VERSION)" >> $BASH_ENV
+                  source $BASH_ENV
           name: "Building Docker Image"
-      - test-image:
-          name: "Testing Docker Image"
-          requires:
-            - "Building Docker Image"
-      - scan-image:
-          name: "Scan image via Snyk"
-          requires:
-            - "Building Docker Image"
-      - tag-and-publish:
-          name: "Tag and Publish Docker Images"
-          requires:
-            - "Testing Docker Image"
-            - "Scan image via Snyk"
-            - "Testing Python Demo Code"
-          filters:
-            branches:
-              only: main
-      - hold:
-          name: "Approval Needed for Deployment"
-          type: approval
-          requires:
-            - "Tag and Publish Docker Images"
-          filters:
-            branches:
-              only: main
-      - deploy-via-ip-ranges:
-          name: "Deploy Application via IP Ranges"
-          requires:
-            - "Tag and Publish Docker Images"
-            - "Approval Needed for Deployment"
-          filters:
-            branches:
-              only: main
+        
