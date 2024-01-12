@@ -283,6 +283,7 @@ workflows:
                 command: |
                   echo "export VERSION=$(cat VERSION)" >> $BASH_ENV
                   source $BASH_ENV
+                  echo "Testing"
                   echo "<< pipeline.trigger_source >>"
           name: "Building Docker Image"
         
